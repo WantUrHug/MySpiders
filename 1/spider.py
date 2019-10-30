@@ -114,6 +114,8 @@ class MySpider():
 		self.main_url = "http://218.14.150.123:8085/"
 		self.pagesize = 10
 		self._parse_based_task()
+		
+		self.worksheet = xlwt.Workbook(encoding = "utf-8")
 
 	def __len__(self):
 
@@ -137,7 +139,42 @@ class MySpider():
 			self.total_cnt.append(total_count)
 			print(self.name_ls[i], total_count)
 
-	def _download_info(self, pageindex, pagesize, jgid, download_csv):
+	def _parse_from_table(self, table):
+		'''
+		tds 是一个网页中将会被解析成表格的信息，依次提取成字典然后再交给另一个函数保存到本地的 excel 中
+		'''
+		dic = collections.OrderedDict()
+		#dic["areaname"] = tds[0].find("span").string + tds[0].find("strong").string
+		tds = table.find_all("td")
+
+		dic["areaname"] = tds[0].span.string + tds[0].strong.contents[2]
+		dic["bookid"] = tds[1].font.contents[0].string + ":" + tds[1].font.contents[1][1:]
+
+		dic["开发企业名称"] = table.find(id = "kfsmc").string
+		dic["开发资质证书号"] = table.find(id = "kfszh").string
+		dic["备注"] = table.find(id = "Reg_Remark").string
+		if dic["备注"]:
+			dic["备注"] = re.sub("( |\n|\r)", "", dic["备注"])
+		dic["项目名称"] = table.find(id = "PresellName").string
+		dic["项目坐落"] = table.find(id = "ItemRepose").string
+		dic["预售房屋建筑面积"] = re.sub("( |\n|\r)", "", table.find(id = "PresellArea").string)
+		dic["土地使用权证号及用途"] = table.find(id = "landinfo").string
+		dic["住宅"] = re.sub(" ", "", table.find(id = "zhuzhai").string)
+		dic["预售房屋栋号及层数"] = re.sub("( |\n|\r)", "", table.find(id = "donginfo").string)
+		dic["商业用房"] = re.sub(" ", "", table.find(id = "businesshouse").string)
+		dic["发证时各栋已建层数"] = table.find(id = "buildedcount").string
+		dic["办公用房统计"] = re.sub(" ", "", table.find(id = "Officestatistics").string)
+		dic["预售房屋占用土地是否抵押"] = re.sub("( |\n|\r)", "", table.find(id = "isdiya").string)
+		dic["其它"] = re.sub(" ", "", table.find(id = "others").string)
+		dic["预售款专用账户"] = re.sub("( |\n|\r)", "", table.find(id = "bank").string)
+		dic["发证机关查询、投诉电话"] = re.sub("( |\n|\r)", "", table.find(id = "fztel").string)
+		dic["发证机关（盖章）"] = table.find(id = "fzorg").string[10:]
+		dic["有效期"] = re.sub(" ", "", table.find(id = "FZDatebegin").string[4:-1])
+		dic["发证日期"] = re.sub(" ", "", table.find(id = "FZDate").string[5:])
+		
+		return dic
+	
+	def _download_info(self, pageindex, pagesize, jgid):
 	
 		#main_url = "http://218.14.150.123:8085/"
 		#SPFYSXM=商品房预售项目
@@ -165,7 +202,7 @@ class MySpider():
 			table = item_soup.find("table")
 			tds = table.find_all("td")
 	
-			info = parse_from_table(table)
+			info = self.parse_from_table(table)
 			save2csv(info, download_csv, header_flag)
 			if self.header_flag:
 				self.header_flag = False
