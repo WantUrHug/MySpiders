@@ -115,7 +115,7 @@ class MySpider():
 		self.pagesize = 10
 		self._parse_based_task()
 		
-		self.worksheet = xlwt.Workbook(encoding = "utf-8")
+		self.workbook = xlwt.Workbook(encoding = "utf-8")
 
 	def __len__(self):
 
@@ -174,8 +174,10 @@ class MySpider():
 		
 		return dic
 	
-	def _download_info(self, pageindex, pagesize, jgid):
+	def _get_infos(self, pageindex, pagesize, jgid):
 	
+		infos = []
+
 		#main_url = "http://218.14.150.123:8085/"
 		#SPFYSXM=商品房预售项目
 		SPFYSXM = "api/TradeInfoJMApi/GetSPFYSXM?jgid=%s&&type=ysxmmc&value=&pageindex=%d&pagesize=%d"%(jgid, pageindex, pagesize)
@@ -192,9 +194,8 @@ class MySpider():
 		#[6:-8}是为了略去正则表达式的前面的 href=" 和后面的 target"，注意是有空格的
 		href_ls = [pattern.search(item["data"][index]).group()[7:-8] for item in rows]
 	
-		global header_flag
 		for href in href_ls:
-			response = requests.get(main_url + href)
+			response = requests.get(self.main_url + href)
 			html = response.content
 			html_doc = str(html, "utf-8")
 	
@@ -202,12 +203,30 @@ class MySpider():
 			table = item_soup.find("table")
 			tds = table.find_all("td")
 	
-			info = self.parse_from_table(table)
-			save2csv(info, download_csv, header_flag)
-			if self.header_flag:
-				self.header_flag = False
+			info = self._parse_from_table(table)
+			infos.append(info)
 	
-		print("成功写入第%s页."%pageindex)
+		return infos
+
+
+	def run(self):
+
+
+		for i in range(1):#len(self)):
+
+			worksheet = self.workbook.add_sheet(self.name_ls[i])
+			#每张表的表头，只需要执行一次添加表头的操作
+			header_flag = True
+			pag = self.total_cnt[i]//self.pagesize if self.total_cnt[i]%self.pagesize == 0 else self.total_cnt[i]//self.pagesize+1
+
+			for pageindex in range(pag):
+				infos = self._get_infos(pageindex, self.pagesize, self.jgid_ls[i])
+				#print(infos)
+				for j in range(self.pagesize):
+					print("1")
+
+
+		self.workbook.save("test.xls")
 	
 
 if __name__ == "__main__":
@@ -235,3 +254,4 @@ if __name__ == "__main__":
 	#	for pageindex in range(1, pagenum_ls[i] + 1):
 	#		download_info(pageindex, 10, jgid_ls[i], csv)
 	spider = MySpider(jgid_ls, name_ls)
+	spider.run()
